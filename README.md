@@ -1,12 +1,12 @@
-# Space Invaders - Implementare POO în C++
+# Space Invaders - Implementare POO în C++ (Proiect 3)
 
 ## 1. Enunțul Problemei
 
 ### Ce se dă:
 Se cere implementarea unui joc **Space Invaders** folosind principiile Programării Orientate pe Obiecte. Jocul conține mai multe entități cu comportamente distincte care interacționează între ele: o navă spațială controlată de utilizator, alienii inamici care se deplasează și trag proiectile, laserele trase de ambele tabere, și obiecte cu efecte speciale (power-ups). Toate entitățile sunt caracterizate prin poziție pe ecran și comportament specific. Entitățile trebuie să se poată actualiza și desena pe ecran, iar interacțiunile (coliziunile) trebuie gestionate corespunzător. Jocul are logică de victorie (eliminarea tuturor inamicilor) și logică de înfrângere (lovirea navei sau trecerea inamicilor de ea).
 
-### Ce se cere:
-Să se implementeze arhitectura jocului folosind o ierarhie de clase cu bază proprie și cel puțin 3 clase derivate; să se gestioneze excepțiile (minim 3 tipuri distincte) pentru cazuri cum ar fi imposibilitatea încărcării resurselor; să se implementeze funcții virtuale și virtuale pure cu interfață non-virtuală; să se utilizeze obiecte cu pointeri de bază pentru a exploata polimorfismul; să se aplice pattern-uri avansate precum copy-and-swap și dynamic_cast pentru downcast; să se evite variabilele globale, să se folosească std::string și std::vector în loc de char* și vectori alocați manual; să se implementeze operatorul de stream (<<) pentru afișare; să se utilizeze date și funcții statice unde este cazul (de exemplu, pentru a gestiona stări comune ale unor entități); și să se demonstreze înțelegerea conceptelor POO prin utilizare reală și cu sens în contextul jocului.
+### Ce se cere (Proiect 3 - cerințe adăugate față de Proiect 2):
+Față de cerințele anterioare, în proiectul 3 se adaugă: utilizarea **claselor șablon (template)** cu cel puțin un atribut și o funcție membră dependentă de tipul generic; utilizarea **funcțiilor libere șablon** (template); implementarea unui **Design Pattern creațional** (Factory Method); implementarea unui **Design Pattern structural sau comportamental** (Prototype și Singleton); și utilizarea unui **Design Pattern structural suplimentar** (prin clasa șablon `ResourceManager<T>` ca Singleton). Toate elementele noi trebuie să fie utilizate cu sens real în contextul jocului, nu artificial.
 
 ---
 
@@ -18,7 +18,7 @@ Să se implementeze arhitectura jocului folosind o ierarhie de clase cu bază pr
 Clasa de bază (proprie, nu derivată din altă clasă predefinită) care definește interfața comună pentru toate entitățile jocului.
 
 **Caracteristici:**
-- **Atribute protejate:** 
+- **Atribute protejate:**
   - `sf::Vector2f position` - poziția entității pe ecran
   - `static int entityCount` - variabilă statică pentru a urmări numărul total de entități create
 
@@ -38,7 +38,10 @@ Clasa de bază (proprie, nu derivată din altă clasă predefinită) care define
 - **Operator de stream:**
   - `operator<<` - afișează entitatea folosind metoda `print()` și moștenire virtuală
 
-**Justificare:** Clasa de bază permite gestionarea uniformă a tuturor entităților prin pointeri de bază. Metodele statice urmăresc starea globală a sistemului fără a folosi variabile globale.
+- **DESIGN PATTERN - Prototype (metodă pură nouă):**
+  - `clone() const` - metodă virtuală pură care forțează toate derivatele să implementeze clonarea poliorfă
+
+**Justificare:** Clasa de bază permite gestionarea uniformă a tuturor entităților prin pointeri de bază. Metodele statice urmăresc starea globală a sistemului fără a folosi variabile globale. Metoda `clone()` face parte din pattern-ul Prototype aplicat la nivelul întregii ierarhii.
 
 ---
 
@@ -47,25 +50,25 @@ Reprezintă nava spațială controlată de jucător.
 
 **Atribute specifice:**
 - `sf::Texture image` și `sf::Sprite sprite` - reprezentarea grafică
-- `std::vector<std::shared_ptr<Laser>> lasers` - vectorul laserelor trase de navă
+- `std::vector<std::shared_ptr<Laser<>>> lasers` - vectorul laserelor trase de navă (**acum Laser este clasă șablon**)
 - `sf::Clock fireClock` - cronometru pentru controlul ratei de tragere
 - `float fireInterval`, `bool speedBoostActive`, `bool cloneActive` - stări power-up
 - `std::shared_ptr<Spaceship> shipClone` - pointer la nava secundară din power-up Clone
 
 **Metode specifice:**
 - `MoveLeft()`, `MoveRight()` - deplasare controlată de utilizator
-- `fire()` - trage lasere (apelează `clone()` cu dynamic_cast pentru navă secundară)
+- `fire()` - trage lasere (instanțiază `Laser<>` cu argumentul implicit)
 - `activateSpeedBoost()`, `activateClone()` - activează power-up-uri
 - `updatePowerUps()` - gestionează durata power-up-urilor
 
 **Implementări virtuale:**
 - `doUpdate()`, `doDraw()`, `getBounds()` - override-uri corespunzătoare
+- `clone() const` - returnează `std::make_shared<Spaceship>(*this)` (Prototype)
 
 **Pattern copy-and-swap:**
 - Constructor de copiere, operator= și funcție swap
-- `clone() const` - returnează `std::shared_ptr<Spaceship>` (pentru a nu folosi polimorfismul întrucât nu este necesar pentru altele)
 
-**Justificare:** Nava poate fi clonată (prin copy constructor și clone()), iar power-up-urile necesită gestionare de stări și timpi specifici.
+**Justificare:** Nava poate fi clonată (prin copy constructor și `clone()`), iar power-up-urile necesită gestionare de stări și timpi specifici. Utilizează `ResourceManager<sf::Texture>` pentru încărcarea texturii.
 
 ---
 
@@ -85,28 +88,43 @@ Reprezintă entitățile inamice care se deplasează și trag.
 
 **Implementări virtuale:**
 - `doUpdate()`, `doDraw()`, `getBounds()`
+- `clone() const` - returnează `std::make_shared<Alien>(*this)` (Prototype)
 
-**Justificare:** Alienii trebuie să se mute sincron (de aceea `static` pentru viteză și direcție). Metoda `changeDirection()` modifica global direcția pentru toate entitățile de tipul Alien din cauza mecanicii jocului (când ating marginea, toți se întorc).
+**Justificare:** Alienii trebuie să se mute sincron (de aceea `static` pentru viteză și direcție). Utilizează acum `ResourceManager<sf::Texture>` în loc să încarce direct textura, evitând reîncărcări inutile din disc.
 
 ---
 
-#### **Clasa Derivată 3: `Laser`**
+#### **Clasa Derivată 3: `Laser<T>`** *(acum clasă șablon)*
 Reprezintă proiectilele trase de navă sau alienii.
 
-**Atribute specifice:**
-- `float speed` - viteza deplasării pe verticală
+**Atribut șablon:**
+- `T speed` - viteza deplasării pe verticală (**atribut de tip T — cerință clasă template**)
+
+**Alte atribute specifice:**
 - `bool active` - stare dacă laserul este activ
 - `sf::RectangleShape shape` - geometria vizuală
 
-**Metode virtuale:**
-- `doUpdate()`, `doDraw()`, `getBounds()`
+**Funcție membră dependentă de T:**
+- `Laser(sf::Vector2f pos, T speedVal)` - constructorul primește viteza ca parametru de tip T
 
-**Justificare:** Laser-urile sunt entități simple dar esențiale pentru mecaninica de coliziune. Sunt create prin `std::shared_ptr` și gestionate în vectori.
+**Implementări virtuale:**
+- `doUpdate()` - folosește `static_cast<float>(speed)` și funcția liberă șablon `isOut<T>`
+- `doDraw()`, `getBounds()`
+- `clone() const` - returnează `std::make_shared<Laser<T>>(*this)` (Prototype)
+
+**Utilizare:**
+```cpp
+// Cu argumentul implicit (float)
+std::make_shared<Laser<>>(position, -10.f);  // lasere navă (viteza negativă = sus)
+std::make_shared<Laser<>>(position, 5.f);    // lasere alien (viteza pozitivă = jos)
+```
+
+**Justificare:** Transformarea în clasă șablon permite utilizarea diferitelor tipuri numerice pentru viteză (float, double etc.). În practică se folosește `float` (argumentul implicit), dar arhitectura este generalizată.
 
 ---
 
 #### **Clasă de Bază Secundară: `PowerUp`**
-O a 4-a clasă derivată din `Entity` care introduceți un alt nivel de ierarhie.
+O clasă derivată din `Entity` care introduce un alt nivel de ierarhie.
 
 **Atribute:**
 - `sf::RectangleShape shape` - reprezentare vizuală
@@ -116,22 +134,132 @@ O a 4-a clasă derivată din `Entity` care introduceți un alt nivel de ierarhie
 - `applyEffect(Spaceship&)` - efect specific al fiecărui bonus
 
 **Implementări virtuale:**
-- `doUpdate()`, `doDraw()`, `getBounds()`
+- `doUpdate()` - folosește funcția liberă șablon `isOut()`
+- `doDraw()`, `getBounds()`
 
 ---
 
 #### **Clase Derivate din PowerUp:**
 1. **`SpeedPowerUp`** - accelerează rata de tragere
    - `applyEffect()` - apelează `activateSpeedBoost()` pe navă
+   - `clone() const` - returnează `std::make_shared<SpeedPowerUp>(*this)` (Prototype)
 
 2. **`ClonePowerUp`** - creează o navă secundară care trage și ea
    - `applyEffect()` - apelează `activateClone()` pe navă
+   - `clone() const` - returnează `std::make_shared<ClonePowerUp>(*this)` (Prototype)
 
-**Justificare:** Herența multiplă a nivelelor (Entity -> PowerUp -> SpeedPowerUp/ClonePowerUp) demonstrează polimorfismul în adâncime.
+**Justificare:** Ierarhia multiplă de niveluri (Entity → PowerUp → SpeedPowerUp/ClonePowerUp) demonstrează polimorfismul în adâncime. Ambele derivate implementează `clone()` conform pattern-ului Prototype.
 
 ---
 
-### 2.2 Gestionarea Excepțiilor
+#### **Clasa Șablon: `ResourceManager<T>`** *(nouă în Proiect 3)*
+Clasă șablon care implementează simultan **Singleton** și un manager de resurse generic.
+
+**Atribute:**
+- `std::map<std::string, T> resources` - dicționar de resurse indexate după nume
+
+**Design Pattern Singleton:**
+- Constructor privat, fără constructor de copiere, fără operator=
+- `static ResourceManager& getInstance()` - returnează instanța unică prin static local
+
+**Funcții membre dependente de T:**
+- `void load(const std::string& name, const std::string& filepath)` - încarcă resursa de tip T din fișier
+- `T& get(const std::string& name)` - returnează resursa stocată
+
+**Gestionarea erorilor:**
+- Dacă `loadFromFile()` eșuează, aruncă `ResourceException`
+- Dacă se cere o resursă neîncărcată, aruncă `ResourceException`
+
+**Utilizare:**
+```cpp
+auto& manager = ResourceManager::getInstance();
+manager.load("spaceship", "Graphics/spaceship.png");
+sf::Texture& tex = manager.get("spaceship");
+```
+
+**Justificare:** Evită reîncărcarea acelorași texturi de pe disc la fiecare instanțiere de `Alien`. Toți alienii de același tip partajează textura deja încărcată.
+
+---
+
+#### **Clasa: `AlienFactory`** *(nouă în Proiect 3)*
+Implementează **Design Pattern Factory Method** pentru crearea alienilor.
+
+**Metodă statică:**
+```cpp
+static std::shared_ptr createAlien(float x, float y, int row);
+```
+
+**Logica de creare:**
+- Rând 0 → `alienType = 3` (cel mai puternic, grafic diferit)
+- Rânduri 1–2 → `alienType = 2`
+- Rânduri 3–4 → `alienType = 1`
+
+**Utilizare în `Game::initAliens()`:**
+```cpp
+allEntities.push_back(AlienFactory::createAlien(x, y, row));
+```
+
+**Justificare:** Centralizează logica de configurare a tipului de alien în funcție de poziția sa în formație, izolând-o față de restul logicii de joc.
+
+---
+
+### 2.2 Funcție Liberă Șablon (`isOut<T>`)
+
+Definită în `Entity.h`, în afara oricărei clase:
+
+```cpp
+template 
+bool isOut(T currentY, T limitY, bool movingDown = true) {
+    if (movingDown) return currentY > limitY;
+    return currentY < limitY;
+}
+```
+
+**Utilizări cu sens:**
+- În `Laser<T>::doUpdate()` - verifică dacă laserul a ieșit din ecran (sus sau jos)
+- În `PowerUp::doUpdate()` - verifică dacă power-up-ul a coborât sub ecran
+
+**Justificare:** Funcția este utilă pentru orice tip numeric (float, double, int) și evită duplicarea codului de verificare a limitelor de ecran.
+
+---
+
+### 2.3 Design Patterns Implementate
+
+#### **1. Prototype**
+Metodă `clone() const` declarată pur virtuală în `Entity` și implementată în toate derivatele:
+
+| Clasă | Implementare |
+|-------|-------------|
+| `Spaceship` | `std::make_shared<Spaceship>(*this)` |
+| `Alien` | `std::make_shared<Alien>(*this)` |
+| `Laser<T>` | `std::make_shared<Laser<T>>(*this)` |
+| `SpeedPowerUp` | `std::make_shared<SpeedPowerUp>(*this)` |
+| `ClonePowerUp` | `std::make_shared<ClonePowerUp>(*this)` |
+
+**Utilizare reală:** Power-up-ul Clone apelează `this->clone()` pe navă pentru a crea nava secundară:
+```cpp
+auto duplicated = this->clone();
+shipClone = std::dynamic_pointer_cast(duplicated);
+```
+
+#### **2. Singleton**
+Implementat în `ResourceManager<T>`:
+```cpp
+static ResourceManager& getInstance() {
+    static ResourceManager instance; // Inițializare thread-safe în C++11+
+    return instance;
+}
+```
+
+#### **3. Factory Method**
+Implementat în `AlienFactory::createAlien()` - returnează `shared_ptr<Alien>` configurat în funcție de parametrul `row`.
+
+#### **4. Non-Virtual Interface (NVI)**
+Metodele publice `update()` și `draw()` din `Entity` apelează `doUpdate()` și `doDraw()` private — pattern deja prezent din Proiect 2, menținut și extins.
+
+---
+
+### 2.4 Gestionarea Excepțiilor
 
 Implementată o ierarhie proprie de excepții derivată din `std::runtime_error`:
 
@@ -143,8 +271,8 @@ class ConfigurationException : public GameException    // Erori configurație
 ```
 
 **Utilizări:**
-- `ResourceException` - aruncată în constructorii `Spaceship` și `Alien` dacă imaginile nu se încarcă
-- `ConfigurationException` - pentru erori de configurare (dacă s-ar implementa)
+- `ResourceException` - aruncată în `ResourceManager<T>::load()` și `get()` dacă imaginile nu se încarcă sau nu există
+- `ConfigurationException` - pentru erori de configurare (extensibil)
 - `GameplayException` - pentru erori de logică (extensibil)
 
 **Try-catch în main():**
@@ -158,64 +286,50 @@ catch (const std::exception&) { ... }
 
 ---
 
-### 2.3 Utilizare Polimorfism și Dynamic Cast
+### 2.5 Utilizare Polimorfism și Dynamic Cast
 
 #### **Pointeri de Bază cu Virtuale:**
-În clasa `Game`, se gestiona o colecție:
+În clasa `Game`, se gestionează o colecție:
 ```cpp
-std::vector<std::shared_ptr<Entity>> allEntities;
+std::vector<std::shared_ptr> allEntities;
 ```
 
 Toate derivatele sunt stocate ca `shared_ptr<Entity>`, iar metodele virtuale sunt apelate prin acești pointeri:
 ```cpp
 for (auto& entity : allEntities) {
-    entity->update();           // Apel virtual
-    entity->draw(window);       // Apel virtual
+    entity->update();     // Apel virtual
+    entity->draw(window); // Apel virtual
 }
 ```
 
 #### **Dynamic Cast cu Sens:**
 ```cpp
-auto alienTarget = std::dynamic_pointer_cast<Alien>(entity);
-if (alienTarget) {
-    // Operații specifice alienilor (coliziuni, deszăpezire, etc.)
-}
+auto alienTarget = std::dynamic_pointer_cast(entity);
+if (alienTarget) { /* coliziuni, mișcare */ }
 
-auto pUp = std::dynamic_pointer_cast<PowerUp>(entity);
-if (pUp) {
-    // Aplicare efect power-up
-    pUp->applyEffect(spaceship);
-}
+auto pUp = std::dynamic_pointer_cast(entity);
+if (pUp) { pUp->applyEffect(spaceship); }
+
+// Prototype + dynamic_cast pentru nava clonată
+auto duplicated = this->clone();
+shipClone = std::dynamic_pointer_cast(duplicated);
 ```
-
-**Justificare:** Downcast-ul este necesar pentru a executa operații specifice doar pentru anumite tipuri de entități fără a compromite design-ul polimorf.
 
 ---
 
-### 2.4 Pattern Copy-and-Swap
+### 2.6 Pattern Copy-and-Swap
 
 Implementat pentru `Spaceship`:
 ```cpp
 class Spaceship : public Entity {
-    // Constructor de copiere
-    Spaceship(const Spaceship& other);
-    
-    // Operator= cu copy-and-swap
-    Spaceship& operator=(Spaceship other);
-    
-    // Funcție swap
-    friend void swap(Spaceship& first, Spaceship& second) noexcept;
+    Spaceship(const Spaceship& other);           // Constructor de copiere
+    Spaceship& operator=(Spaceship other);       // Operator= cu copy-and-swap
+    friend void swap(Spaceship&, Spaceship&) noexcept;
 };
 ```
 
-**Implementare:**
+**Implementare swap:**
 ```cpp
-Spaceship::Spaceship(const Spaceship& other) 
-    : Entity(other), image(other.image), sprite(image) {
-    sprite.setTexture(image, true);
-    sprite.setPosition(position);
-}
-
 void swap(Spaceship& first, Spaceship& second) noexcept {
     using std::swap;
     swap(first.position, second.position);
@@ -223,57 +337,39 @@ void swap(Spaceship& first, Spaceship& second) noexcept {
     first.sprite.setTexture(first.image, true);
     second.sprite.setTexture(second.image, true);
 }
-
-Spaceship& Spaceship::operator=(Spaceship other) {
-    swap(*this, other);
-    return *this;
-}
 ```
-
-**Justificare:** Pattern-ul copy-and-swap oferă garanție puternică de excepție și evită memory leaks.
 
 ---
 
-### 2.5 Utilizare std::shared_ptr
+### 2.7 Utilizare std::shared_ptr
 
 Aplicat extensiv:
-- `std::vector<std::shared_ptr<Laser>> lasers` - lasere din navă
+- `std::vector<std::shared_ptr<Laser<>>> lasers` - lasere din navă (clasă șablon)
 - `std::vector<std::shared_ptr<Entity>> allEntities` - toate entitățile
-- `std::vector<std::shared_ptr<Laser>> alienLasers` - lasere inamice
+- `std::vector<std::shared_ptr<Laser<>>> alienLasers` - lasere inamice (clasă șablon)
 - `std::shared_ptr<Spaceship> shipClone` - nava secundară
 
 **Avantaje:**
 - Management automat al memoriei
 - Evitarea memory leaks
-- Ștergere automată când nu mai sunt referințe
+- Ștergere automată când nu mai există referințe
 
 ---
 
-### 2.6 Date și Funcții Statice
+### 2.8 Date și Funcții Statice
 
-1. **`Entity::entityCount`** (static member)
-   - Urmărește numărul total de entități viu în orice moment
-   - Incrementat în constructor, decrementat în destructor
-
-2. **`Entity::getEntityCount()`** (static method)
-   - Returnează numărul curent de entități
-
-3. **`Alien::speed`** (static member)
-   - Viteza comună pentru toți alienii
-   - Sincronizează mișcarea pe orizontală
-
-4. **`Alien::direction`** (static member)
-   - Direcție comună (1 pentru dreapta, -1 pentru stânga)
-
-5. **`Alien::changeDirection()`** (static method)
-   - Inversează direcția pentru toți alienii odată
-   - Apelată când un alien atinge marginea
+1. **`Entity::entityCount`** (static member) - urmărește numărul total de entități vii
+2. **`Entity::getEntityCount()`** (static method) - returnează numărul curent de entități
+3. **`Alien::speed`** (static member) - viteza comună pentru toți alienii
+4. **`Alien::direction`** (static member) - direcție comună (1 dreapta, -1 stânga)
+5. **`Alien::changeDirection()`** (static method) - inversează direcția pentru toți alienii odată
+6. **`ResourceManager<T>::getInstance()`** (static method) - returnează instanța Singleton
 
 **Justificare:** Datele statice sincronizează comportamentul entităților de același tip fără a utiliza variabile globale.
 
 ---
 
-### 2.7 Const-Correctness
+### 2.9 Const-Correctness
 
 Utilizat în mai multe locuri:
 ```cpp
@@ -281,14 +377,14 @@ bool isAlive() const { return alive; }
 bool isActive() const { return active; }
 sf::FloatRect getBounds() const override;
 sf::Vector2f getCenter() const;
-std::shared_ptr<Spaceship> clone() const;
+std::shared_ptr clone() const;
 static int getEntityCount();
 virtual void print(std::ostream&) const;
 ```
 
 ---
 
-### 2.8 Operator <<
+### 2.10 Operator <<
 
 Implementat cu friend function și metodă virtuală de ajutor:
 ```cpp
@@ -303,35 +399,6 @@ virtual void print(std::ostream& os) const {
 ```
 
 Permite afișarea poliorfă a tuturor entităților.
-
----
-
-### 2.9 Funcții Virtuale Specifice Temei
-
-1. **`doUpdate()` și `doDraw()`** (virtuale pure, private)
-   - Logică specifică fiecărei entități
-   - Apelate prin interfață non-virtuală `update()` și `draw()`
-
-2. **`getBounds()`** (virtuală pură)
-   - Returnează dreptunghiul care încojură obiectul
-   - Utilizată pentru detecția coliziunilor
-
-3. **`applyEffect()`** (virtuală pură în PowerUp)
-   - Aplică efectul specific unui power-up
-   - Implementată în `SpeedPowerUp` și `ClonePowerUp`
-
-Toate sunt specifice temei și nu sunt simple citiri/afișări.
-
----
-
-### 2.10 Evitarea Citirilor de la Tastatură
-
-Jocul nu folosește `std::cin` pentru configurare. În schimb:
-- Se folosește `sf::Keyboard::isKeyPressed()` doar pentru controlul în timp real al navei
-- Parametrii de joc sunt hard-codați în constante
-- Dimensiunile și pozițiile sunt stabilite la compilare
-
-Dacă s-ar dori configurabilitate, s-ar folosi fișiere de configurare text, nu citiri interactive.
 
 ---
 
@@ -356,7 +423,7 @@ Dacă s-ar dori configurabilitate, s-ar folosi fișiere de configurare text, nu 
 - Tipuri: SpeedBoost (tragere mai rapidă) și Clone (navă secundară)
 
 #### **Mișcare Sincronă:**
-- Alienii se mută sincron pe orizontală (down odată ce ating marginea)
+- Alienii se mută sincron pe orizontală; coboară odată ce ating marginea
 - Implementat cu date statice în clasa `Alien`
 
 ---
@@ -366,41 +433,83 @@ Dacă s-ar dori configurabilitate, s-ar folosi fișiere de configurare text, nu 
 | Cerință | Status | Detalii |
 |---------|--------|---------|
 | 1a. Split header/source | ✅ | Toate clasele au `.h` și `.cpp` separate |
-| 1b. Clase mici în aceeași pereche | ✅ | `PowerUp.h/cpp` conține PowerUp și derivatele |
-| 2a. Ierarhie (1 bază + 3+ derivate) | ✅ | Entity (bază) + Spaceship, Alien, Laser, PowerUp (4 derivate) |
+| 1b. Clase mici în aceeași pereche | ✅ | `PowerUp.h/cpp` conține PowerUp și derivatele; `AlienFactory.h` only-header |
+| 2a. Ierarhie (1 bază + 3+ derivate) | ✅ | Entity + Spaceship, Alien, Laser\<T\>, PowerUp (4 derivate) |
 | 2b. Bază proprie | ✅ | Entity nu este derivată din clasă predefinită |
-| 2c. Virtuale și NVI | ✅ | Virtuale pure `doUpdate()`, `doDraw()`, `getBounds()` cu NVI |
+| 2c. Virtuale și NVI | ✅ | Virtuale pure `doUpdate()`, `doDraw()`, `getBounds()`, `clone()` cu NVI |
 | 2d. Constructor bază în derivate | ✅ | Toți constructorii derivatelor apelează Entity() |
 | 2e. Pointer bază + downcast | ✅ | `vector<shared_ptr<Entity>>` cu `dynamic_pointer_cast` |
 | 2e.1 Copy constructor/swap | ✅ | Implementat pentru Spaceship |
-| 2e.2 dynamic_cast | ✅ | Utilizat în `Game::Update()` și `CheckForCollisions()` |
+| 2e.2 dynamic_cast | ✅ | Utilizat în `Game::Update()`, `CheckForCollisions()`, `activateClone()` |
 | 2e.3 std::string și vector | ✅ | Fără char* și vectori manuali |
 | 2e.4 shared_ptr | ✅ | Utilizat pentru toate entitățile |
-| 3a. Ierarhie excepții | ⚠️ | GameException, ResourceException, GameplayException, ConfigurationException |
-| 3b. Throw/catch | ✅ | Throw în constructori, catch în main |
-| 4. Date și funcții statice | ✅ | Entity::entityCount, Alien::speed, Alien::direction |
+| 3a. Ierarhie excepții | ✅ | GameException, ResourceException, GameplayException, ConfigurationException |
+| 3b. Throw/catch | ✅ | Throw în ResourceManager, catch în main |
+| 4. Date și funcții statice | ✅ | Entity::entityCount, Alien::speed, Alien::direction, ResourceManager::getInstance() |
 | 5. Const | ✅ | Multiple metode const |
-| 6. Funcții nivel înalt | ✅ | Fire, MoveLeft, MoveRight, activateClone, etc. |
+| 6. Funcții nivel înalt | ✅ | Fire, MoveLeft, MoveRight, activateClone, applyEffect etc. |
 | 7. Operator << | ✅ | Implementat cu metodă virtuală print() |
 | 8. Fără citiri tastatură | ✅ | Doar control real-time cu sf::Keyboard |
 | 9. README | ✅ | Acest document |
 | 11. Fără globale/cod fără sens | ✅ | Doar static members în clase |
+| **P3: Clasă șablon cu atribut T** | ✅ | `Laser<T>` cu `T speed`; `ResourceManager<T>` cu `map<string, T>` |
+| **P3: Funcție membră dependentă de T** | ✅ | Constructor `Laser(pos, T speedVal)`, `load()` și `get()` în ResourceManager |
+| **P3: Funcție liberă șablon** | ✅ | `isOut<T>()` în Entity.h, utilizată în Laser și PowerUp |
+| **P3: Design Pattern Factory** | ✅ | `AlienFactory::createAlien()` |
+| **P3: Design Pattern Prototype** | ✅ | `clone()` pur virtual în Entity, implementat în toate derivatele |
+| **P3: Design Pattern Singleton** | ✅ | `ResourceManager<T>::getInstance()` |
 
 ---
 
-## 4. Compilare și Rulare
+## 4. Ce s-a Adăugat față de Proiect 2
+
+### 4.1 Clasa Șablon `Laser<T>`
+**Înainte (P2):** `Laser` era o clasă obișnuită cu `float speed`.  
+**Acum (P3):** `Laser<T>` este o **clasă template** cu `T speed` ca atribut generic și constructorul `Laser(sf::Vector2f, T)` ca funcție membră dependentă de T. Se instanțiază cu `Laser<>` (argumentul implicit `float`) în tot codul.
+
+Toate vectorii care rețineau `Laser` au fost actualizați:
+```cpp
+// Înainte
+std::vector<std::shared_ptr> lasers;
+// Acum
+std::vector<std::shared_ptr<Laser<>>> lasers;
+```
+
+### 4.2 Funcție Liberă Șablon `isOut<T>`
+**Înainte (P2):** Nu exista.  
+**Acum (P3):** Funcție template definită în `Entity.h`, utilizată în `Laser<T>::doUpdate()` și `PowerUp::doUpdate()` pentru a verifica ieșirea din ecran.
+
+### 4.3 Clasa Șablon `ResourceManager<T>` (Singleton)
+**Înainte (P2):** `Spaceship` și `Alien` încărcau textura direct în constructor cu `loadFromFile()`.  
+**Acum (P3):** Toți apelează `ResourceManager<sf::Texture>::getInstance()`, care:
+- Reține texturile deja încărcate în `std::map`
+- Evită reîncărcarea repetată a acelorași fișiere
+- Aruncă `ResourceException` în caz de eșec
+- Este un **Singleton** complet (constructor privat, fără copiere)
+
+### 4.4 Design Pattern Factory Method — `AlienFactory`
+**Înainte (P2):** Logica de creare a alienilor era inline în `Game::initAliens()`.  
+**Acum (P3):** Mutată în clasa `AlienFactory` cu metoda statică `createAlien(x, y, row)` care selectează tipul corect de alien în funcție de rândul din formație.
+
+### 4.5 Design Pattern Prototype — `clone()` în toată ierarhia
+**Înainte (P2):** `clone()` exista doar în `Spaceship`, fără a fi declarată în `Entity`.  
+**Acum (P3):** `clone() const` este declarată **pur virtuală în `Entity`**, forțând toate derivatele să o implementeze. Power-up-urile `SpeedPowerUp` și `ClonePowerUp` au acum și ele `clone()`. Metoda este utilizată real în `activateClone()` pentru duplicarea navei.
+
+---
+
+## 5. Compilare și Rulare
 
 ### Dependențe:
-- SFML 2.5+ (Simple and Fast Multimedia Library)
+- SFML 3.0.2 (descărcat automat prin CMake FetchContent)
 - C++17 sau mai nou
-- CMake (opțional)
+- CMake 3.28+
 
 ### Compilare:
 ```bash
 mkdir build
 cd build
 cmake ..
-make
+cmake --build .
 ```
 
 ### Rulare:
@@ -414,31 +523,16 @@ make
 
 ---
 
-## 5. Bibliografie și Resurse
+## 6. Bibliografie și Resurse
 
-1. **SFML Documentation**: https://www.sfml-dev.org/documentation/2.5.1/
-2. **C++ Reference - std::shared_ptr**: https://en.cppreference.com/w/cpp/memory/shared_ptr
-3. **C++ Reference - std::vector**: https://en.cppreference.com/w/cpp/container/vector
-4. **Modern C++ Design Patterns**:
+1. **SFML 3 Documentation**: https://www.sfml-dev.org/documentation/3.0.0/
+2. **C++ Reference - Templates**: https://en.cppreference.com/w/cpp/language/templates
+3. **C++ Reference - std::shared_ptr**: https://en.cppreference.com/w/cpp/memory/shared_ptr
+4. **Modern C++ Design Patterns:**
    - Non-Virtual Interface (NVI)
    - Copy-and-Swap
-   - RAII (Resource Acquisition Is Initialization)
+   - Singleton
+   - Factory Method
+   - Prototype
 5. **Exception Handling in C++**: https://en.cppreference.com/w/cpp/language/exceptions
 6. **Dynamic Casting in C++**: https://en.cppreference.com/w/cpp/language/dynamic_cast
-
----
-
-## 6. Observații și Extinderi Posibile
-
-1. **Configurabilitate:** S-ar putea adăuga un fișier de configurare (game_config.txt) pentru parametri ca viteza, intervale de foc, etc.
-2. **Level-uri:** Ar putea fi implementate nivele cu dificultate crescândă
-3. **Score:** Sistem de punctaj pentru inamici eliminați
-4. **Animații:** Efecte vizuale pentru coliziuni, explosii, etc.
-5. **Sunet:** Adăugare de efecte sonore cu SFML Audio
-
----
-
-**Autor:** Alexandra  
-**Data:** aprilie 2026  
-**Limbaj:** C++ (C++17)  
-**Framework:** SFML 2.5+
