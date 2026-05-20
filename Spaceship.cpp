@@ -69,7 +69,7 @@ void Spaceship::MoveRight() {
 
 void Spaceship::fire() {
     if (fireClock.getElapsedTime().asSeconds() >= fireInterval) {
-        // MODIFICARE: Instanțiere folosind clasa template cu argumentul implicit
+        // Instanțiere folosind clasa template cu argumentul implicit
         lasers.push_back(std::make_shared<Laser<>>(sf::Vector2f(position.x + 20, position.y), -10.f));
         if (cloneActive && shipClone) {
             lasers.push_back(std::make_shared<Laser<>>(sf::Vector2f(shipClone->position.x + 20, shipClone->position.y), -10.f));

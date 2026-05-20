@@ -38,7 +38,7 @@ public:
     }
     static int getEntityCount();
 };
-// CEREINȚA: Funcție normală/liberă șablon (template) utilă pentru calcularea limitelor de ecran
+// Funcție liberă șablon utilă pentru calcularea limitelor de ecran
 template <typename T>
 bool isOut(T currentY, T limitY, bool movingDown = true) {
     if (movingDown) {

@@ -25,15 +25,15 @@ public:
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager& operator=(const ResourceManager&) = delete;
 
-    // Metodă statică pentru a obține instanța unică a managerului (Singleton)
+    // Metodă statică pentru a obține instanța unică a managerului
     static ResourceManager& getInstance() {
-        static ResourceManager instance;
+        static ResourceManager instance; //va trăi pe tot parcursul rulării programului
         return instance;
     }
 
-    // Funcție membru care depinde de T - încarcă o resursă generică din fișier
+    // Funcție membru care depinde de T: încarcă o resursă generică din fișier
     void load(const std::string& name, const std::string& filepath) {
-        if (resources.find(name) == resources.end()) {
+        if (resources.find(name) == resources.end()) { //dacă resursa nu a fost deja încărcată
             T resource;
             if (!resource.loadFromFile(filepath)) {
                 throw ResourceException(filepath);
@@ -42,7 +42,7 @@ public:
         }
     }
 
-    // Funcție membru care depinde de T - returnează o referință către resursa stocată
+    // Funcție membru care depinde de T: returnează o referință către resursa stocată
     T& get(const std::string& name) {
         auto it = resources.find(name);
         if (it == resources.end()) {

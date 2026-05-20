@@ -7,12 +7,12 @@
 #include <vector>
 #include <memory>
 
-// Cerința 2.a: Moștenire
+// Moștenire
 class Spaceship : public Entity {
 private:
     sf::Texture image;
     sf::Sprite sprite; // Obiectul grafic care permite desenarea și poziționarea imaginii
-    // MODIFICARE: Vectorul reține acum instanțieri ale clasei template (Laser<>)
+    //Vectorul reține acum instanțieri ale clasei template (Laser<>)
     std::vector<std::shared_ptr<Laser<>>> lasers;
     sf::Clock fireClock; // Cronometru intern pentru a preveni tragerea prea rapida
 
@@ -35,7 +35,7 @@ public:
     void MoveRight();
 
     void fire();
-    // MODIFICARE: Returnează referință la vectorul de clase template
+    //Returnează referință la vectorul de clase template
     std::vector<std::shared_ptr<Laser<>>>& getLasers() { return lasers; }
 
     // DESIGN PATTERN: Prototype (Suprascriere metodă clonare)

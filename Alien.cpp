@@ -13,8 +13,8 @@ int Alien::direction = 1;
 Alien::Alien(float x, float y, int type) : Entity(x, y), type(type), alive(true), texture(), sprite(texture) {
     std::string path = "Graphics/alien_" + std::to_string(type) + ".png";
 
-    // Înlocuire cu ResourceManager (Clasă șablon + Singleton) pentru eficientizare și cerință
-    auto& manager = ResourceManager<sf::Texture>::getInstance();
+    // Înlocuire cu ResourceManager (Clasă șablon + Singleton) pentru eficientizare
+    auto& manager = ResourceManager<sf::Texture>::getInstance(); //cere instanța unică a managerului de resurse
     manager.load("alien_" + std::to_string(type), path);
     texture = manager.get("alien_" + std::to_string(type));
 

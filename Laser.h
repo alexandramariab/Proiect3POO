@@ -9,7 +9,7 @@
 template <typename T = float>
 class Laser : public Entity {
 private:
-    T speed;                    // CERINȚĂ: Atribut de tip T
+    T speed;
     bool active;
     sf::RectangleShape shape;
 
@@ -17,7 +17,7 @@ private:
         position.y += static_cast<float>(speed); // Folosește atributul de tip T
         shape.setPosition(position);
 
-        // CERINȚĂ: Utilizarea funcției libere șablon isOutOfScreen
+        //Utilizarea funcției libere șablon isOut
         if (position.y < 0 || isOut(position.y, static_cast<float>(Config::SCREEN_HEIGHT))) {
             active = false;
         }
@@ -30,9 +30,8 @@ private:
     }
 
 public:
-    // CERINȚĂ: Funcție membru care depinde de T (Constructorul primește un parametru de tip T)
-    Laser(sf::Vector2f pos, T speedVal)
-        : Entity(pos.x, pos.y), speed(speedVal), active(true) {
+    //Funcție membru care depinde de T
+    Laser(sf::Vector2f pos, T speedVal): Entity(pos.x, pos.y), speed(speedVal), active(true) {
 
         shape.setSize({4.f, 15.f});
         shape.setFillColor(sf::Color::Yellow);
